@@ -4,11 +4,7 @@
 //% weight=100 color=#0fbc11 icon=""
 namespace PCA9685 {
     let _DEBUG: boolean = false
-    const debug = (msg: string) => {
-        if (_DEBUG === true) {
-            serial.writeLine(msg)
-        }
-    }
+
 
     const MIN_CHIP_ADDRESS = 0x40
     const MAX_CHIP_ADDRESS = MIN_CHIP_ADDRESS + 62
@@ -210,13 +206,6 @@ namespace PCA9685 {
             this.position = -1
         }
 
-        debug() {
-            const params = this.config()
-
-            for (let j = 0; j < params.length; j = j + 2) {
-                debug(`Servo[${this.id}].${params[j]}: ${params[j + 1]}`)
-            }
-        }
 
         setOffsetsFromFreq(startFreq: number, stopFreq: number, midFreq: number = -1): void {
             this.minOffset = startFreq // calcFreqOffset(startFreq)
@@ -290,11 +279,9 @@ namespace PCA9685 {
     export function getChipConfig(address: number): ChipConfig {
         for (let i = 0; i < chips.length; i++) {
             if (chips[i].address === address) {
-                debug(`Returning chip ${i}`)
                 return chips[i]
             }
         }
-        debug(`Creating new chip for address ${address}`)
         const chip = new ChipConfig(address)
         const index = chips.length
         chips.push(chip)
@@ -320,8 +307,6 @@ namespace PCA9685 {
         onStep = Math.max(0, Math.min(4095, onStep))
         offStep = Math.max(0, Math.min(4095, offStep))
 
-        debug(`setPinPulseRange(${pinNumber}, ${onStep}, ${offStep}, ${chipAddress})`)
-        debug(`  pinOffset ${pinOffset}`)
 
         // Low byte of onStep
         write(chipAddress, pinOffset + channel0OnStepLowByte, onStep & 0xFF)
@@ -347,7 +332,6 @@ namespace PCA9685 {
         ledNum = Math.max(1, Math.min(16, ledNum))
         dutyCycle = Math.max(0, Math.min(100, dutyCycle))
         const pwm = (dutyCycle * (chipResolution - 1)) / 100
-        debug(`setLedDutyCycle(${ledNum}, ${dutyCycle}, ${chipAddress})`)
         return setPinPulseRange(ledNum - 1, 0, pwm, chipAddress)
     }
 
@@ -375,12 +359,6 @@ namespace PCA9685 {
         const servo: ServoConfig = chip.servos[servoNum - 1]
         const pwm = degrees180ToPWM(chip.freq, degrees, servo.minOffset, servo.maxOffset)
         servo.position = degrees
-        debug(`setServoPosition(${servoNum}, ${degrees}, ${chipAddress})`)
-        debug(`  servo.pinNumber ${servo.pinNumber}`)
-        debug(`  servo.minOffset ${servo.minOffset}`)
-        debug(`  servo.maxOffset ${servo.maxOffset}`)
-        debug(`  pwm ${pwm}`)
-        servo.debug()
         return setPinPulseRange(servo.pinNumber, 0, pwm, chipAddress)
     }
 
@@ -392,7 +370,6 @@ namespace PCA9685 {
      */
     //% block
     export function setCRServoPosition(servoNum: ServoNum = 1, speed: number, chipAddress: number = 0x40): void {
-        debug(`setCRServoPosition(${servoNum}, ${speed}, ${chipAddress})`)
         const chip = getChipConfig(chipAddress)
         const freq = chip.freq
         servoNum = Math.max(1, Math.min(16, servoNum))
@@ -404,18 +381,11 @@ namespace PCA9685 {
             return setPinPulseRange(servo.pinNumber, 0, offsetMid, chipAddress)
         }
         const isReverse: boolean = speed < 0
-        debug(isReverse ? 'Reverse' : 'Forward')
         const spread = isReverse ? offsetMid - offsetStart : offsetEnd - offsetMid
-        debug(`Spread ${spread}`)
         servo.position = speed
         speed = Math.abs(speed)
         const calcOffset: number = ((speed * spread) / 100)
-        debug(`Offset ${calcOffset}`)
-        debug(`min ${offsetStart}`)
-        debug(`mid ${offsetMid}`)
-        debug(`max ${offsetEnd}`)
         const pwm = isReverse ? offsetMid - calcOffset : offsetMid + calcOffset
-        debug(`pwm ${pwm}`)
         return setPinPulseRange(servo.pinNumber, 0, pwm, chipAddress)
     }
 
@@ -433,10 +403,8 @@ namespace PCA9685 {
         servoNum = Math.max(1, Math.min(16, servoNum))
         minTimeCs = Math.max(0, minTimeCs)
         maxTimeCs = Math.max(0, maxTimeCs)
-        debug(`setServoLimits(${servoNum}, ${minTimeCs}, ${maxTimeCs}, ${chipAddress})`)
         const servo: ServoConfig = chip.servos[servoNum - 1]
         midTimeCs = midTimeCs > -1 ? midTimeCs : ((maxTimeCs - minTimeCs) / 2) + minTimeCs
-        debug(`midTimeCs ${midTimeCs}`)
         return servo.setOffsetsFromFreq(minTimeCs, maxTimeCs, midTimeCs)
     }
 
@@ -447,7 +415,6 @@ namespace PCA9685 {
      */
     //% block advanced=true
     export function init(chipAddress: number = 0x40, newFreq: number = 50) {
-        debug(`Init chip at address ${chipAddress} to ${newFreq}Hz`)
         const buf = pins.createBuffer(2)
         const freq = (newFreq > 1000 ? 1000 : (newFreq < 40 ? 40 : newFreq))
         const prescaler = calcFreqPrescaler(freq)
